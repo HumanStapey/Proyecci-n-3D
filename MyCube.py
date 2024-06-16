@@ -3,6 +3,7 @@ import numpy as np
 from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
+from OpenGL.GLUT import *
 from PIL import Image, ImageSequence
 
 vertices = [
@@ -53,45 +54,54 @@ colors = [
 textures = []
 gif_paths = ['gifs/bici.gif','gifs/bros.gif','gifs/escoba.gif','gifs/hambriento.gif','gifs/musico.gif','gifs/reza.gif']
 gif_frames = []
-frame_counter = 0
 
 def load_gif_texture(path):
     img = Image.open(path)
     frames = [frame.copy().convert("RGBA") for frame in ImageSequence.Iterator(img)]
     return frames
 
-def init_colors():
-    glEnable(GL_DEPTH_TEST)
+def init_textures():
+    global gif_frames
+    gif_frames = [load_gif_texture(gif_path) for gif_path in gif_paths]
 
-""" def draw_cube():
-    glBegin(GL_QUADS)
+    glEnable(GL_TEXTURE_2D)
+    for i, frames in enumerate(gif_frames):
+        texture_id = glGenTextures(1)
+        textures.append(texture_id)
+        glBindTexture(GL_TEXTURE_2D, texture_id)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        # Cargar la primera imagen del gif
+        img_data = np.array(frames[0].getdata(), np.uint8).reshape(frames[0].size[1], frames[0].size[0], 4)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frames[0].size[0], frames[0].size[1], 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+
+def update_textures(frame_count):
+    global gif_frames
+    for i, frames in enumerate(gif_frames):
+        current_frame = frames[frame_count % len(frames)]
+        glBindTexture(GL_TEXTURE_2D, textures[i])
+        img_data = np.array(current_frame.getdata(), np.uint8).reshape(current_frame.size[1], current_frame.size[0], 4)
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, current_frame.size[0], current_frame.size[1], GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+
+def draw_cube():
+    glEnable(GL_TEXTURE_2D)
     for i, surface in enumerate(surfaces):
         glBindTexture(GL_TEXTURE_2D, textures[i])
-        for vertex in surface:
-            if vertex % 2 == 0:
-                glTexCoord2f(0, 0)
-            else:
-                glTexCoord2f(1, 1)
+        glBegin(GL_QUADS)
+        for j, vertex in enumerate(surface):
+            glTexCoord2f(j % 2, j // 2)
             glVertex3fv(vertices[vertex])
-    glEnd()
+        glEnd()
+    glDisable(GL_TEXTURE_2D)
 
     glBegin(GL_LINES)
     glColor3fv((0, 0, 0))
     for edge in aristas:
         for vertex in edge:
             glVertex3fv(vertices[vertex])
-    glEnd() """
+    glEnd()
 
-def update_textures():
-    global frame_counter
-    frame_counter += 1
-    for i, frames in enumerate(gif_frames):
-        frame = frames[frame_counter % len(frames)]
-        glBindTexture(GL_TEXTURE_2D, textures[i])
-        img_data = np.array(frame.getdata(), np.uint8)
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frame.size[0], frame.size[1], GL_RGBA, GL_UNSIGNED_BYTE, img_data)
-
-def draw_cube():
+""" def draw_cube():
     glBegin(GL_QUADS)
     for i, surface in enumerate(surfaces):
         glColor3fv(colors[i])
@@ -104,7 +114,7 @@ def draw_cube():
     for edge in aristas:
         for vertex in edge:
             glVertex3fv(vertices[vertex])
-    glEnd()
+    glEnd() """
 
 def draw_square():
     glBegin(GL_LINES)
@@ -127,21 +137,6 @@ def load_texture(image):
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
     
     return texture_id
-
-def init_textures():
-    global gif_frames
-    gif_frames = [load_gif_texture(gif_path) for gif_path in gif_paths]
-
-    glEnable(GL_TEXTURE_2D)
-    for i, frames in enumerate(gif_frames):
-        texture_id = glGenTextures(1)
-        textures.append(texture_id)
-        glBindTexture(GL_TEXTURE_2D, texture_id)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        # Cargar la primera imagen del gif
-        img_data = np.array(frames[0].getdata(), np.uint8)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frames[0].size[0], frames[0].size[1], 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
 
 def get_vertex_under_mouse(mouse_x, mouse_y, vertices):
     viewport = glGetIntegerv(GL_VIEWPORT)
@@ -176,7 +171,6 @@ def update_vertex_with_mouse_drag(vertices, indice, mouse_x, mouse_y):
     vertices[indice] = mouse_pos
 
 def main():
-    global gif_paths
     dragging = False
     closest_vertex = -1
     pygame.init()
@@ -187,9 +181,10 @@ def main():
     pygame.display.set_mode(display, DOUBLEBUF | OPENGL | FULLSCREEN) """
 
     display = (800,600)
-    pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
+    pygame.display.set_mode(display, DOUBLEBUF | OPENGL)
 
-    init_colors()
+    glEnable(GL_DEPTH_TEST)
+    init_textures()
 
     gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
 
@@ -200,8 +195,7 @@ def main():
     glTranslatef(0.0,-1.0, -2.0)
     glRotatef(45,0,5,0)
 
-    #init_textures()
-
+    frame_count = 0
     running = True
     while running:
         for event in pygame.event.get():    
@@ -225,8 +219,10 @@ def main():
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         draw_cube()
-        #update_textures()
+        update_textures(frame_count)
         pygame.display.flip()
-        pygame.time.wait(100)
+        pygame.time.wait(10000)
+        frame_count += 1
 
-main()
+if __name__ == "__main__":
+    main()
