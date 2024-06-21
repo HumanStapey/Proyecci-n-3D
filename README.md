@@ -9,3 +9,5 @@ Realizando con las librerías Pygame, PyOpenGL y PIL:
 ejecutar en consola:
 
 ``` python .\racoonsGame.py```
+
+* nota: usar version python 3.11.9
