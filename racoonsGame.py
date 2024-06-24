@@ -151,6 +151,10 @@ def main():
     """ display = (800,600)
     pygame.display.set_mode(display, DOUBLEBUF | OPENGL) """
 
+    pygame.mixer.init()
+    pygame.mixer.music.load('arn94.mp3')
+    pygame.mixer.music.play()
+
     # Cargar los frames de todos los GIFs
     all_gif_frames = [load_gif_texture(path) for path in gif_paths]
     num_gifs = len(all_gif_frames)
